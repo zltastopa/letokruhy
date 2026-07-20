@@ -109,13 +109,16 @@ def rosters() -> dict[int, list[int]]:
 
 
 def main() -> None:
+    rmap = rosters()
     rows = []
     missing_birth = []
-    for term, ids in sorted(rosters().items()):
+    missing_pages = []
+    for term, ids in sorted(rmap.items()):
         ref = ELECTION[term]
         for mid in ids:
             page = MP_DIR / f"{mid}-{term}.html"
             if not page.exists():
+                missing_pages.append((term, mid))
                 continue
             f = parse_mp(page)
             born = parse_date(f.get("Narodený(á)", ""))
@@ -144,6 +147,13 @@ def main() -> None:
     problems = []
     if not rows:
         problems.append("no MP rows parsed at all")
+    if missing_pages:
+        # Every roster id is fetched by scrape.py; a gap means an incomplete
+        # scrape, so the distribution would be biased. Fail instead of publish.
+        problems.append(
+            f"{len(missing_pages)} roster MPs have no cached page "
+            f"(run scripts/scrape.py): {missing_pages[:10]}"
+        )
     for term in ELECTION:
         got = by_term.get(term, 0)
         if got < 140:  # every real term has ~150+ (incl. replacements)
