@@ -1,0 +1,93 @@
+# Letokruhy
+
+Vekové zloženie Národnej rady SR naprieč všetkými deviatimi volebnými
+obdobiami (1994 až 2023), poskladané "from first principles" z verejných
+stránok NRSR: z rodných dátumov samotných poslancov.
+
+Ako letokruhy stromu prezrádzajú jeho vek, tieto dáta ukazujú, ako starne
+slovenský parlament.
+
+**Live:** https://letokruhy.zltastopa.sk
+
+## Čo v tom nájdeš
+
+Jedna samostatná stránka [`index.html`](index.html) (bez externých závislostí,
+otvorí sa aj offline) so štyrmi pohľadmi:
+
+- **Interaktívny súboj dvoch období:** vyber ľubovoľné dva roky z rozbaľovačiek
+  (predvolene 1994 vs 2023). Zoskupené päťročné kategórie, os X sa prispôsobí
+  rozsahu veku oboch období, os Y sa škáluje automaticky, tlačidlo na výmenu,
+  a po nájazde myšou tooltip s podielom aj absolútnym počtom poslancov.
+- **Krabicové grafy pre každé obdobie:** celý rozptyl veku (min, Q1, medián,
+  Q3, max, priemer) plus každý poslanec ako bodka.
+- **Trend v čase:** priemerný a mediánový vek za 30 rokov.
+- **Zloženie vekových skupín:** stopercentný podiel skupín pod 30, 30s, 40s,
+  50s a 60+.
+
+Hlavné zistenie: priemerný vek parlamentu je pozoruhodne stabilný (okolo 47
+rokov) počas troch dekád, s miernym nárastom na 48,4 v roku 2023. Podiel
+šesťdesiatnikov a starších sa zhruba zdvojnásobil (z 9 % na 18 %).
+
+## Odkiaľ sú dáta
+
+Pre každé obdobie `t` (1 až 9):
+
+1. **Zoznam poslancov:** `sid=poslanci/zoznam_abc&CisObdobia=t` vráti každé
+   `PoslanecID`, ktoré v danom období slúžilo (historické stránky sú kumulatívne,
+   vrátane náhradníkov).
+2. **Detail poslanca:** `sid=poslanci/poslanec&PoslanecID=<id>&CisObdobia=t`
+   vráti dátum narodenia (`Narodený(á)`), stranu (`Kandidoval(a) za`), meno,
+   národnosť.
+
+**Vek** = celé roky ku dňu volieb daného obdobia. Opravy a doplnenia:
+
+- Zoznam pre aktuálne obdobie (2023) uvádza len sediacich poslancov, preto je
+  doplnený o všetkých, ktorí v ňom hlasovali (`data/extra_ids.json`), čím sa
+  zachytia aj tí, čo mandát opustili počas obdobia (napr. ministri). Spolu 189.
+- Traja poslanci mali na nrsr.sk chybný alebo prázdny dátum narodenia (Sólymos,
+  Jurinová, Borguľa). Opravené podľa Wikipédie a TASR (viď `BIRTH_OVERRIDE`
+  v `scripts/build.py`).
+
+## Ako je to zostavené
+
+```
+scripts/scrape.py   # stiahne zoznamy + detaily poslancov do cache/ (idempotentné)
+scripts/build.py    # parsuje -> data/mps.csv + data/distribution.json
+scripts/render.py   # -> index.html
+```
+
+Skripty používajú iba štandardnú knižnicu Pythonu 3.12 (žiadne závislosti).
+
+```bash
+python scripts/scrape.py
+python scripts/build.py
+python scripts/render.py
+```
+
+## Nasadenie
+
+- **GitHub Actions** zostavujú a nasadzujú stránku (`.github/workflows/deploy.yml`):
+  pri každom pushi do `main` sa spustí `render.py` a výsledok sa publikuje na
+  GitHub Pages.
+- **Obnova dát** (`.github/workflows/refresh.yml`): raz mesačne (a na požiadanie)
+  znova stiahne dáta z NRSR, prebuduje `data/` a commitne zmeny, čo spustí
+  nasadenie.
+- Vlastná doména je nastavená cez súbor `CNAME` (`letokruhy.zltastopa.sk`).
+  V nastaveniach DNS stačí nasmerovať CNAME záznam na GitHub Pages.
+
+## Súbory
+
+- `index.html` - samostatná stránka (dáta sú vložené priamo v nej).
+- `data/mps.csv` - jeden riadok na (obdobie, poslanec): meno, strana, dátum
+  narodenia, vek pri voľbách.
+- `data/distribution.json` - vek a súhrnná štatistika za každé obdobie.
+- `data/extra_ids.json` - doplnené `PoslanecID` pre obdobie 9.
+- `cache/` - surové HTML (gitignored, regenerovateľné cez `scrape.py`).
+
+## Súvisiace
+
+- [zltastopa.sk](https://zltastopa.sk/) - domovská stránka Žltá Stopa
+- [nrsr-dochadzka](https://github.com/zltastopa/nrsr-dochadzka) - dochádzka a
+  hlasovania NR SR
+
+Súčasť projektu **Žltá Stopa**. Licencia MIT.

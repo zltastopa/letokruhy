@@ -1,0 +1,51 @@
+name: Refresh NRSR data
+
+# Re-scrapes NRSR rosters and MP pages from first principles, rebuilds the
+# dataset, and commits data/ + index.html only when the underlying data
+# (data/mps.csv) actually changed. It then explicitly dispatches the deploy
+# workflow, because a push made with the default GITHUB_TOKEN does not trigger
+# other workflows. Runs monthly and on demand. The raw HTML cache is
+# regenerated in the runner and stays gitignored.
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 4 1 * *" # 04:00 UTC on the 1st of each month
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: refresh
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Scrape, build, render
+        run: |
+          python scripts/scrape.py
+          python scripts/build.py
+          python scripts/render.py
+      - name: Commit and deploy if data changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data index.html
+          # Gate on mps.csv: it carries the real data with no generated timestamp,
+          # so timestamp-only churn in distribution.json/index.html is ignored.
+          if git diff --cached --quiet -- data/mps.csv; then
+            echo "No data changes; skipping commit."
+          else
+            git commit -m "chore: refresh NRSR age data"
+            git push
+            gh workflow run deploy.yml --ref main
+          fi

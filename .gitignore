@@ -1,0 +1,12 @@
+# Raw scraped HTML: regenerable via scripts/scrape.py, ~130 MB, not committed
+cache/
+
+# Python
+__pycache__/
+*.pyc
+
+# Build output assembled in CI
+_site/
+
+# OS
+.DS_Store
