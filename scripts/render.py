@@ -320,8 +320,9 @@ def main() -> None:
   .badge img {{ height:38px; width:auto; display:block; opacity:.92; }}
   .badge:hover img {{ opacity:1; }}
   .wrap {{ max-width:960px; margin:0 auto; padding:32px 20px 80px; }}
-  header h1 {{ font-size:30px; margin:0 0 6px; letter-spacing:-.02em; }}
-  header p.sub {{ color:var(--muted); margin:0 0 24px; font-size:17px; }}
+  header h1 {{ font-size:38px; margin:0 0 2px; letter-spacing:-.025em; }}
+  .tagline {{ font-size:19px; font-weight:600; color:var(--ink); margin:0 0 10px; }}
+  header p.sub {{ color:var(--muted); margin:0 0 24px; font-size:16px; max-width:70ch; }}
   .kpis {{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:22px 0 34px; }}
   .kpi {{ background:#fff; border:1px solid {GRID}; border-radius:12px; padding:16px 16px 14px; }}
   .kpi .n {{ font-size:26px; font-weight:700; letter-spacing:-.01em; }}
@@ -375,14 +376,16 @@ def main() -> None:
 <div class="wrap">
 <header>
   <div class="brandbar">
-    <h1>Letokruhy: vekové zloženie Národnej rady SR</h1>
+    <h1>Letokruhy</h1>
     <a class="badge" href="https://www.zltastopa.sk" target="_blank" rel="noopener" aria-label="Projekt Žltá Stopa">
       <img src="{BADGE_URI}" alt="Projekt Žltá Stopa" width="118" height="38">
     </a>
   </div>
-  <p class="sub">Ako starí boli slovenskí poslanci pri každých parlamentných voľbách, 1994 až dnes.
-     Vek počítaný ku dňu volieb, zo všetkých {sum(t['n'] for t in TERMS)} mandátov (vrátane náhradníkov).
-     Súčasť projektu <a href="https://www.zltastopa.sk" target="_blank" rel="noopener">Žltá Stopa</a>.</p>
+  <p class="tagline">Vekové zloženie Národnej rady SR</p>
+  <p class="sub">Ako letokruhy stromu prezrádzajú jeho vek, tieto čísla ukazujú, ako starne slovenský
+     parlament, od 1994 po dnešok. Vek počítaný ku dňu volieb, zo všetkých {sum(t['n'] for t in TERMS)}
+     mandátov (vrátane náhradníkov). Súčasť projektu
+     <a href="https://www.zltastopa.sk" target="_blank" rel="noopener">Žltá Stopa</a>.</p>
 </header>
 
 <div class="kpis">
