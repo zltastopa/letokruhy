@@ -152,9 +152,10 @@
   function termForYear(Y){ let sp=SPANS[0]; for(const s of SPANS){ if(s.year<=Y) sp=s; } return sp; }
   function ageAsOf(iso, ref){ const d=new Date(iso); let a=ref.getFullYear()-d.getFullYear();
     const m=ref.getMonth()-d.getMonth(); if(m<0||(m===0&&ref.getDate()<d.getDate())) a--; return a; }
+  function yearLabel(Y){ return Y>=MAXY ? "dnes" : String(Y); }
   function entryForYear(Y){ const sp=termForYear(Y);
     const ref = Y>=MAXY ? NOW : new Date(Y,5,30);    // mid-year; current year = today
-    return { label:String(Y), ages: sp.births.map(b=>ageAsOf(b,ref)) }; }
+    return { label:yearLabel(Y), ages: sp.births.map(b=>ageAsOf(b,ref)) }; }
   function svgEl(A,B){
     const aAges=A.ages, bAges=B.ages;
     // adaptive x-range: cover both years' min..max, snapped to 5-year bins
@@ -195,7 +196,7 @@
   [selA,selB].forEach(sl=>{ sl.min=MINY; sl.max=MAXY; sl.step=1; });
   selA.value=MINY; selB.value=MAXY;
   function draw(){ const ya=+selA.value, yb=+selB.value;
-    outA.textContent=ya; outB.textContent=yb;
+    outA.textContent=yearLabel(ya); outB.textContent=yearLabel(yb);
     cmp.innerHTML=svgEl(entryForYear(ya), entryForYear(yb)); }
   selA.addEventListener("input",draw); selB.addEventListener("input",draw);
   swap.addEventListener("click",()=>{ const a=selA.value; selA.value=selB.value; selB.value=a; draw(); });
