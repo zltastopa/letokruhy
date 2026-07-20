@@ -199,8 +199,8 @@ def stat_table() -> str:
 def main() -> None:
     all_mean = round(statistics.mean(t["mean"] for t in TERMS), 1)
     first, last = TERMS[0], TERMS[-1]
-    youngest = min((t["min"], t["label"]) for t in TERMS)
-    oldest = max((t["max"], t["label"]) for t in TERMS)
+    youngest = DATA["records"]["youngest"]
+    oldest = DATA["records"]["oldest"]
     delta = round(last["mean"] - first["mean"], 1)
 
     js = r"""<script>
@@ -345,8 +345,8 @@ def main() -> None:
 <div class="kpis">
   <div class="kpi"><div class="n">{all_mean}</div><div class="l">priemerný vek naprieč 9 voľbami</div></div>
   <div class="kpi"><div class="n">{last['mean']}</div><div class="l">priemer 2023 ({'+' if delta>=0 else ''}{delta} r. oproti 1994)</div></div>
-  <div class="kpi"><div class="n">{youngest[0]}</div><div class="l">najmladší poslanec ({youngest[1]})</div></div>
-  <div class="kpi"><div class="n">{oldest[0]}</div><div class="l">najstarší poslanec ({oldest[1]})</div></div>
+  <div class="kpi"><div class="n">{youngest['age']}</div><div class="l">najmladší poslanec:<br><a href="{esc(youngest['url'])}" target="_blank" rel="noopener">{esc(youngest['name'])}</a> ({youngest['label']})</div></div>
+  <div class="kpi"><div class="n">{oldest['age']}</div><div class="l">najstarší poslanec:<br><a href="{esc(oldest['url'])}" target="_blank" rel="noopener">{esc(oldest['name'])}</a> ({oldest['label']})</div></div>
 </div>
 
 <section>

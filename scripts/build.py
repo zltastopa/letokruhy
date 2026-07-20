@@ -195,8 +195,35 @@ def main() -> None:
             "ages": ages_sorted,
         })
 
+    # youngest / oldest MP ever seated, resolved to the exact day (precise
+    # tie-break) so the report can name them and link to their NRSR page.
+    aged = [r for r in rows if isinstance(r["age_at_election"], int) and r["birth_date"]]
+
+    def exact_days(r):
+        born = date.fromisoformat(r["birth_date"])
+        return (ELECTION[r["term"]] - born).days
+
+    def record(r):
+        return {
+            "name": r["name"],
+            "term": r["term"],
+            "label": r["term_label"],
+            "mp_id": r["mp_id"],
+            "age": r["age_at_election"],
+            "birth_date": r["birth_date"],
+            "url": (
+                "https://www.nrsr.sk/web/Default.aspx?sid=poslanci/poslanec"
+                f"&PoslanecID={r['mp_id']}&CisObdobia={r['term']}"
+            ),
+        }
+
+    records = {
+        "youngest": record(min(aged, key=exact_days)),
+        "oldest": record(max(aged, key=exact_days)),
+    }
+
     (OUT / "distribution.json").write_text(
-        json.dumps({"terms": dist, "generated": date.today().isoformat()},
+        json.dumps({"terms": dist, "records": records, "generated": date.today().isoformat()},
                    ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
