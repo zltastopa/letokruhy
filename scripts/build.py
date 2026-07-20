@@ -222,8 +222,22 @@ def main() -> None:
         "oldest": record(max(aged, key=exact_days)),
     }
 
+    # "Current parliament": MPs currently sitting in the latest term. The base
+    # roster page lists only sitting members (extra_ids.json holds those who
+    # already left), so we take the roster minus extra_ids. Birth dates are
+    # shipped so the frontend can compute ages as of *today*, live.
+    latest = max(ELECTION)
+    base_html = (ROSTER_DIR / f"term-{latest}.html").read_text(encoding="utf-8")
+    sitting_ids = {int(a) for a, b in MP_LINK.findall(base_html) if int(b) == latest}
+    current_births = sorted(
+        r["birth_date"] for r in rows
+        if r["term"] == latest and r["mp_id"] in sitting_ids and r["birth_date"]
+    )
+    current = {"label": "dnes", "term": latest, "n": len(current_births), "births": current_births}
+
     (OUT / "distribution.json").write_text(
-        json.dumps({"terms": dist, "records": records, "generated": date.today().isoformat()},
+        json.dumps({"terms": dist, "records": records, "current": current,
+                    "generated": date.today().isoformat()},
                    ensure_ascii=False, indent=2),
         encoding="utf-8",
     )

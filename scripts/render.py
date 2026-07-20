@@ -177,8 +177,12 @@ def chart_bands() -> str:
 
 # ---- chart 4 data: client-side interactive grouped histogram -------------
 def compare_payload() -> str:
-    """Per-term ages, embedded for the interactive year-vs-year chart."""
+    """Per-term ages plus a live "today" entry (birth dates -> age computed in
+    the browser) for the interactive comparison chart."""
     payload = [{"label": t["label"], "ages": t["ages"]} for t in TERMS]
+    cur = DATA.get("current")
+    if cur and cur.get("births"):
+        payload.append({"label": cur["label"], "births": cur["births"]})
     return json.dumps(payload, ensure_ascii=False)
 
 
@@ -207,19 +211,29 @@ def main() -> None:
 (function(){
   const DATA = window.CMP_DATA;
   const ACCENT="#2f6fed", GRAY="#b9bdc6", GRID="#e8eaf0", INK="#1b2130", MUTED="#6b7280";
+  function agesOf(entry){
+    if(entry.ages) return entry.ages;                 // fixed snapshot (age at election)
+    const now=new Date();                             // "today" entry: compute from birth dates
+    return entry.births.map(s=>{ const d=new Date(s);
+      let a=now.getFullYear()-d.getFullYear();
+      const m=now.getMonth()-d.getMonth();
+      if(m<0||(m===0&&now.getDate()<d.getDate())) a--;
+      return a; });
+  }
   function counts(ages, edges){
     const lo=edges[0], c=edges.map(()=>0);
     ages.forEach(a=>{ let k=Math.floor((a-lo)/5); k=Math.max(0,Math.min(k,edges.length-1)); c[k]++; });
     return c;
   }
   function svgEl(A,B){
+    const aAges=agesOf(A), bAges=agesOf(B);
     // adaptive x-range: cover both terms' min..max, snapped to 5-year bins
-    const all=A.ages.concat(B.ages);
+    const all=aAges.concat(bAges);
     const lo=Math.floor(Math.min(...all)/5)*5;
     const hi=Math.floor(Math.max(...all)/5)*5;
     const edges=[]; for(let e=lo;e<=hi;e+=5) edges.push(e);
-    const ca=counts(A.ages,edges), cb=counts(B.ages,edges);
-    const totA=A.ages.length, totB=B.ages.length;
+    const ca=counts(aAges,edges), cb=counts(bAges,edges);
+    const totA=aAges.length, totB=bAges.length;
     const ha=ca.map(x=>x/totA), hb=cb.map(x=>x/totB);
     const peak=Math.max(...ha,...hb);
     const ymax=(Math.floor(peak*100/5)+1)*0.05;
@@ -352,7 +366,8 @@ def main() -> None:
 <section>
   <h2>Porovnanie</h2>
   <p class="desc">Vyber si dva roky a porovnaj vekové zloženie poslancov v päťročných kategóriách
-     (podiel poslancov daného obdobia). Predvolene 1994 vs 2023.</p>
+     (podiel poslancov daného obdobia). Predvolene 1994 vs 2023. Možnosť <b>dnes</b> ukáže
+     aktuálne sediacich poslancov s vekom prepočítaným k dnešnému dňu.</p>
   <div class="picker">
     <label>A: <select id="selA"></select></label>
     <label>B: <select id="selB"></select></label>

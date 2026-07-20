@@ -17,7 +17,8 @@ otvorí sa aj offline) so štyrmi pohľadmi:
 - **Interaktívny súboj dvoch období:** vyber ľubovoľné dva roky z rozbaľovačiek
   (predvolene 1994 vs 2023). Zoskupené päťročné kategórie, os X sa prispôsobí
   rozsahu veku oboch období, os Y sa škáluje automaticky, tlačidlo na výmenu,
-  a po nájazde myšou tooltip s podielom aj absolútnym počtom poslancov.
+  a po nájazde myšou tooltip s podielom aj absolútnym počtom poslancov. Voľba
+  `dnes` porovná aktuálne sediacich poslancov s vekom prepočítaným k dnešnému dňu.
 - **Krabicové grafy pre každé obdobie:** celý rozptyl veku (min, Q1, medián,
   Q3, max, priemer) plus každý poslanec ako bodka.
 - **Trend v čase:** priemerný a mediánový vek za 30 rokov.
