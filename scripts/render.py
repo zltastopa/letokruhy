@@ -65,7 +65,7 @@ def chart_boxplots() -> str:
     def y(age):
         return mt + ph - (age - amin) / (amax - amin) * ph
 
-    parts = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="Age distribution by term">']
+    parts = [f'<svg id="boxsvg" viewBox="0 0 {W} {H}" role="img" aria-label="Age distribution by term">']
     # y grid + labels
     for age in range(20, 81, 10):
         yy = y(age)
@@ -115,7 +115,7 @@ def chart_trend() -> str:
     def y(v):
         return mt + ph - (v - amin) / (amax - amin) * ph
 
-    parts = [f'<svg viewBox="0 0 {W} {H}" role="img" aria-label="Mean and median age over time">']
+    parts = [f'<svg id="trendsvg" viewBox="0 0 {W} {H}" role="img" aria-label="Mean and median age over time">']
     for age in range(40, 53, 2):
         yy = y(age)
         parts.append(f'<line x1="{ml}" y1="{yy:.1f}" x2="{W-mr}" y2="{yy:.1f}" stroke="{GRID}"/>')
@@ -193,6 +193,16 @@ def compare_payload() -> str:
     return json.dumps({"minYear": spans[0]["year"], "spans": spans}, ensure_ascii=False)
 
 
+def tools(sel: str, name: str) -> str:
+    """Copy / download-PNG toolbar for a chart SVG (selector `sel`)."""
+    return (
+        f'<div class="chart-tools" data-svg="{sel}" data-name="{name}">'
+        f'<button type="button" class="ct" data-act="copy">Kopírovať</button>'
+        f'<button type="button" class="ct" data-act="download">Stiahnuť PNG</button>'
+        f'</div>'
+    )
+
+
 def stat_table() -> str:
     head = ("<tr><th>Voľby</th><th>Poslanci*</th><th>Priemer</th><th>Medián</th>"
             '<th>Najmladší</th><th>Najstarší</th><th>Q1–Q3</th><th><span class="nocase">σ</span></th></tr>')
@@ -248,7 +258,7 @@ def main() -> None:
     const W=940,H=500, ml=52,mr=16,mt=44,mb=46, pw=W-ml-mr, ph=H-mt-mb;
     const n=edges.length, step=pw/n, bw=step*0.38;
     const y=v=>mt+ph-Math.min(v,ymax)/ymax*ph;
-    let s=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Vek ${A.label} vs ${B.label}">`;
+    let s=`<svg id="cmpsvg" viewBox="0 0 ${W} ${H}" role="img" aria-label="Vek ${A.label} vs ${B.label}">`;
     s+=`<text x="${ml+pw/2}" y="26" text-anchor="middle" class="ctitle">Vekové rozdelenie poslancov NR SR</text>`;
     for(let p=0;p<=Math.round(ymax*100);p+=5){ const yy=y(p/100);
       s+=`<line x1="${ml}" y1="${yy}" x2="${W-mr}" y2="${yy}" stroke="${GRID}"/>`;
@@ -296,6 +306,59 @@ def main() -> None:
     bandsvg.addEventListener("mouseleave",hideTip);
   }
   draw();
+  // ---- export a chart SVG as PNG, with the source URL baked into the image ----
+  const EXPORT_CSS = "text{font-family:-apple-system,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}"
+    +".ax{fill:#6b7280;font-size:12px}.ax.b{fill:#1b2130;font-weight:600}"
+    +".axs{fill:#6b7280;font-size:11px}.axttl{fill:#6b7280;font-size:12px;text-anchor:middle}"
+    +".ctitle{fill:#1b2130;font-size:20px;font-weight:700}.era{font-size:26px;font-weight:700}"
+    +".pct{fill:#fff;font-size:11px;font-weight:600}";
+  const SVGNS="http://www.w3.org/2000/svg";
+  function rasterize(svg, cb){
+    const vb=svg.viewBox.baseVal, W=vb.width, H=vb.height, scale=2, foot=30;
+    const clone=svg.cloneNode(true);
+    clone.setAttribute("xmlns",SVGNS); clone.setAttribute("width",W); clone.setAttribute("height",H);
+    const st=document.createElementNS(SVGNS,"style"); st.textContent=EXPORT_CSS;
+    clone.insertBefore(st, clone.firstChild);
+    const xml=new XMLSerializer().serializeToString(clone);
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement("canvas"); c.width=W*scale; c.height=(H+foot)*scale;
+      const g=c.getContext("2d");
+      g.fillStyle="#ffffff"; g.fillRect(0,0,c.width,c.height);
+      g.drawImage(img,0,0,W*scale,H*scale);
+      g.textBaseline="middle"; g.font="600 "+(13*scale)+"px -apple-system,'Segoe UI',Roboto,Arial,sans-serif";
+      g.textAlign="left";  g.fillStyle="#2f6fed"; g.fillText("letokruhy.zltastopa.sk", 14*scale, (H+foot/2)*scale);
+      g.textAlign="right"; g.fillStyle="#9aa0ab"; g.fillText("Projekt \u017dlt\u00e1 Stopa \u00b7 d\u00e1ta: nrsr.sk", (W-14)*scale, (H+foot/2)*scale);
+      cb(c);
+    };
+    img.onerror=()=>cb(null);
+    img.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(xml);
+  }
+  function flash(btn,txt){ const o=btn.dataset.orig||btn.textContent; btn.dataset.orig=o;
+    btn.textContent=txt; btn.classList.add("ok");
+    setTimeout(()=>{btn.textContent=o; btn.classList.remove("ok");},1500); }
+  function dl(blob,name){ const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+    a.download=name+".png"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+  function toBlobP(svg){ return new Promise(res=>rasterize(svg,c=> c?c.toBlob(res,"image/png"):res(null))); }
+  document.addEventListener("click",e=>{
+    const btn=e.target.closest(".ct"); if(!btn) return;
+    const box=btn.closest(".chart-tools"), svg=box&&document.querySelector(box.dataset.svg);
+    if(!svg) return;
+    const act=btn.dataset.act, name=box.dataset.name||"letokruhy";
+    if(act==="download"){
+      toBlobP(svg).then(b=>{ if(b){ dl(b,name); flash(btn,"Stiahnut\u00e9 \u2713"); } else flash(btn,"Chyba"); });
+      return;
+    }
+    // copy: build ClipboardItem synchronously (Safari needs the write() call in-gesture)
+    if(navigator.clipboard && window.ClipboardItem){
+      const p=toBlobP(svg);
+      navigator.clipboard.write([new ClipboardItem({"image/png":p})])
+        .then(()=>flash(btn,"Skop\u00edrovan\u00e9 \u2713"))
+        .catch(()=>p.then(b=>{ if(b){ dl(b,name); flash(btn,"Stiahnut\u00e9 \u2713"); } else flash(btn,"Chyba"); }));
+    } else {
+      toBlobP(svg).then(b=>{ if(b){ dl(b,name); flash(btn,"Stiahnut\u00e9 \u2713"); } else flash(btn,"Chyba"); });
+    }
+  });
 })();
 </script>"""
 
@@ -348,6 +411,11 @@ def main() -> None:
   .picker #swap {{ font-size:16px; padding:6px 12px; border:1px solid #cdd2dc; border-radius:8px;
                   background:#fff; cursor:pointer; color:var(--ink); }}
   .picker #swap:hover {{ background:#eef1f7; }}
+  .chart-tools {{ display:flex; gap:8px; justify-content:flex-end; margin:6px 0 2px; }}
+  .ct {{ font:inherit; font-size:12.5px; font-weight:600; padding:5px 11px; border:1px solid #cdd2dc;
+        border-radius:7px; background:#fff; color:var(--ink); cursor:pointer; }}
+  .ct:hover {{ background:#eef1f7; }}
+  .ct.ok {{ background:#e6f4ea; border-color:#9bd3ac; color:#1e7a3c; }}
   svg text {{ pointer-events:none; }}
   #cmp .hit, #bandsvg .seg {{ cursor:crosshair; }}
   #bandsvg .seg:hover {{ opacity:.82; }}
@@ -408,6 +476,7 @@ def main() -> None:
     <button id="swap" type="button" title="Vymeniť">⇄</button>
   </div>
   <div id="cmp"></div>
+  {tools("#cmpsvg", "letokruhy-porovnanie")}
 </section>
 
 <section>
@@ -415,6 +484,7 @@ def main() -> None:
   <p class="desc">Každý stĺpec = jedny voľby. Box = medzikvartilové rozpätie (Q1–Q3), čiara = medián,
      kosoštvorec = priemer, fúzy = najmladší a najstarší. Body v pozadí sú jednotliví poslanci.</p>
   {chart_boxplots()}
+  {tools("#boxsvg", "letokruhy-rozdelenie-veku")}
   <p class="legend-inline"><span><span class="dot" style="background:{BOX}"></span>Q1–Q3</span>
     <span><span class="dot" style="background:{INK}"></span>medián</span>
     <span><span class="dot" style="background:{ACCENT2}"></span>priemer</span></p>
@@ -424,12 +494,14 @@ def main() -> None:
   <h2>Priemerný a mediánový vek v čase</h2>
   <p class="desc">Vek parlamentu je pozoruhodne stabilný, okolo 47 rokov počas troch dekád, s miernym nárastom v roku 2023.</p>
   {chart_trend()}
+  {tools("#trendsvg", "letokruhy-trend-veku")}
 </section>
 
 <section>
   <h2>Zastúpenie vekových skupín</h2>
   <p class="desc">Podiel poslancov v jednotlivých vekových pásmach (100 % = všetci poslanci daného obdobia).</p>
   {chart_bands()}
+  {tools("#bandsvg", "letokruhy-vekove-skupiny")}
 </section>
 
 <section>

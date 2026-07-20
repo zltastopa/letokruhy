@@ -25,6 +25,9 @@ otvorí sa aj offline) so štyrmi pohľadmi:
 - **Trend v čase:** priemerný a mediánový vek za 30 rokov.
 - **Zloženie vekových skupín:** stopercentný podiel skupín pod 30, 30s, 40s,
   50s a 60+.
+- **Kopírovať / stiahnuť PNG:** každý graf sa dá jedným klikom skopírovať do
+  schránky alebo stiahnuť ako PNG, s odkazom `letokruhy.zltastopa.sk`
+  vygenerovaným priamo v obrázku.
 
 Hlavné zistenie: priemerný vek parlamentu je pozoruhodne stabilný (okolo 47
 rokov) počas troch dekád, s miernym nárastom na 48,4 v roku 2023. Podiel
