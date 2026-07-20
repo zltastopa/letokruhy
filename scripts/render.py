@@ -6,6 +6,7 @@ inline SVG charts and embedded data; no external dependencies, opens offline.
 """
 from __future__ import annotations
 
+import base64
 import html
 import json
 import statistics
@@ -14,6 +15,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DATA = json.loads((ROOT / "data" / "distribution.json").read_text(encoding="utf-8"))
 TERMS = DATA["terms"]
+
+# Žltá Stopa badge, inlined as a data URI so index.html stays self-contained.
+_badge = (ROOT / "assets" / "projekt-zlta-stopa.png").read_bytes()
+BADGE_URI = "data:image/png;base64," + base64.b64encode(_badge).decode("ascii")
 
 # ---- palette -------------------------------------------------------------
 INK = "#1b2130"
@@ -299,12 +304,21 @@ def main() -> None:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vekové zloženie NR SR (1994–2023)</title>
+<title>Letokruhy: vekové zloženie NR SR | Projekt Žltá Stopa</title>
+<meta name="description" content="Vekové zloženie Národnej rady SR (1994 až dnes), poskladané z verejných dát nrsr.sk. Projekt Žltá Stopa.">
+<meta property="og:title" content="Letokruhy: vekové zloženie NR SR | Projekt Žltá Stopa">
+<meta property="og:description" content="Ako starne slovenský parlament. Interaktívne, z verejných dát nrsr.sk.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://letokruhy.zltastopa.sk/">
 <style>
   :root {{ --ink:{INK}; --muted:{MUTED}; --accent:{ACCENT}; }}
   * {{ box-sizing:border-box; }}
   body {{ margin:0; font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
          color:var(--ink); background:#f7f8fb; }}
+  .brandbar {{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }}
+  .badge {{ flex:none; }}
+  .badge img {{ height:38px; width:auto; display:block; opacity:.92; }}
+  .badge:hover img {{ opacity:1; }}
   .wrap {{ max-width:960px; margin:0 auto; padding:32px 20px 80px; }}
   header h1 {{ font-size:30px; margin:0 0 6px; letter-spacing:-.02em; }}
   header p.sub {{ color:var(--muted); margin:0 0 24px; font-size:17px; }}
@@ -353,15 +367,22 @@ def main() -> None:
   .dot {{ display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px; }}
   footer {{ color:var(--muted); font-size:13px; line-height:1.7; margin-top:26px; }}
   footer code {{ background:#eef1f7; padding:1px 5px; border-radius:4px; font-size:12px; }}
+  footer .parent-link {{ display:inline-block; margin-top:12px; font-weight:600; }}
   a {{ color:var(--accent); }}
 </style>
 </head>
 <body>
 <div class="wrap">
 <header>
-  <h1>Vekové zloženie Národnej rady SR</h1>
-  <p class="sub">Ako starí boli slovenskí poslanci pri každých parlamentných voľbách, 1994–2023.
-     Vek počítaný ku dňu volieb, zo všetkých {sum(t['n'] for t in TERMS)} mandátov (vrátane náhradníkov).</p>
+  <div class="brandbar">
+    <h1>Letokruhy: vekové zloženie Národnej rady SR</h1>
+    <a class="badge" href="https://www.zltastopa.sk" target="_blank" rel="noopener" aria-label="Projekt Žltá Stopa">
+      <img src="{BADGE_URI}" alt="Projekt Žltá Stopa" width="118" height="38">
+    </a>
+  </div>
+  <p class="sub">Ako starí boli slovenskí poslanci pri každých parlamentných voľbách, 1994 až dnes.
+     Vek počítaný ku dňu volieb, zo všetkých {sum(t['n'] for t in TERMS)} mandátov (vrátane náhradníkov).
+     Súčasť projektu <a href="https://www.zltastopa.sk" target="_blank" rel="noopener">Žltá Stopa</a>.</p>
 </header>
 
 <div class="kpis">
@@ -430,6 +451,7 @@ def main() -> None:
   na nrsr.sk chybný/prázdny dátum narodenia (Sólymos, Jurinová, Borguľa), opravené
   podľa Wikipédie/TASR.
   Dáta: <code>data/mps.csv</code>, <code>data/distribution.json</code>. Generované {esc(DATA['generated'])}.
+  <br><a class="parent-link" href="https://www.zltastopa.sk" target="_blank" rel="noopener">Projekt Žltá Stopa ↗</a>
 </footer>
 </div>
 <script>window.CMP_DATA = {compare_payload()};</script>
