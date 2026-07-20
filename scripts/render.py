@@ -177,13 +177,15 @@ def chart_bands() -> str:
 
 # ---- chart 4 data: client-side interactive grouped histogram -------------
 def compare_payload() -> str:
-    """Per-term ages plus a live "today" entry (birth dates -> age computed in
-    the browser) for the interactive comparison chart."""
-    payload = [{"label": t["label"], "ages": t["ages"]} for t in TERMS]
-    cur = DATA.get("current")
-    if cur and cur.get("births"):
-        payload.append({"label": cur["label"], "births": cur["births"]})
-    return json.dumps(payload, ensure_ascii=False)
+    """Term spans (election year + birth dates) so the comparison chart can
+    build the age distribution for any year the user picks: the parliament in
+    office that year, aged to that year, computed live in the browser."""
+    spans = [
+        {"year": int(t["election_date"][:4]), "births": t["births"]}
+        for t in TERMS
+    ]
+    spans.sort(key=lambda s: s["year"])
+    return json.dumps({"minYear": spans[0]["year"], "spans": spans}, ensure_ascii=False)
 
 
 def stat_table() -> str:
@@ -211,23 +213,23 @@ def main() -> None:
 (function(){
   const DATA = window.CMP_DATA;
   const ACCENT="#2f6fed", GRAY="#b9bdc6", GRID="#e8eaf0", INK="#1b2130", MUTED="#6b7280";
-  function agesOf(entry){
-    if(entry.ages) return entry.ages;                 // fixed snapshot (age at election)
-    const now=new Date();                             // "today" entry: compute from birth dates
-    return entry.births.map(s=>{ const d=new Date(s);
-      let a=now.getFullYear()-d.getFullYear();
-      const m=now.getMonth()-d.getMonth();
-      if(m<0||(m===0&&now.getDate()<d.getDate())) a--;
-      return a; });
-  }
   function counts(ages, edges){
     const lo=edges[0], c=edges.map(()=>0);
     ages.forEach(a=>{ let k=Math.floor((a-lo)/5); k=Math.max(0,Math.min(k,edges.length-1)); c[k]++; });
     return c;
   }
+  const SPANS=DATA.spans.slice().sort((a,b)=>a.year-b.year);
+  const MINY=DATA.minYear, MAXY=new Date().getFullYear(), NOW=new Date();
+  // parliament in office in year Y = latest term whose election year <= Y
+  function termForYear(Y){ let sp=SPANS[0]; for(const s of SPANS){ if(s.year<=Y) sp=s; } return sp; }
+  function ageAsOf(iso, ref){ const d=new Date(iso); let a=ref.getFullYear()-d.getFullYear();
+    const m=ref.getMonth()-d.getMonth(); if(m<0||(m===0&&ref.getDate()<d.getDate())) a--; return a; }
+  function entryForYear(Y){ const sp=termForYear(Y);
+    const ref = Y>=MAXY ? NOW : new Date(Y,5,30);    // mid-year; current year = today
+    return { label:String(Y), ages: sp.births.map(b=>ageAsOf(b,ref)) }; }
   function svgEl(A,B){
-    const aAges=agesOf(A), bAges=agesOf(B);
-    // adaptive x-range: cover both terms' min..max, snapped to 5-year bins
+    const aAges=A.ages, bAges=B.ages;
+    // adaptive x-range: cover both years' min..max, snapped to 5-year bins
     const all=aAges.concat(bAges);
     const lo=Math.floor(Math.min(...all)/5)*5;
     const hi=Math.floor(Math.max(...all)/5)*5;
@@ -252,20 +254,22 @@ def main() -> None:
         +` data-bin="${bin}" data-la="${A.label}" data-pa="${(ha[i]*100).toFixed(1)}" data-na="${ca[i]}" data-ta="${totA}"`
         +` data-lb="${B.label}" data-pb="${(hb[i]*100).toFixed(1)}" data-nb="${cb[i]}" data-tb="${totB}"/>`;
       s+=`<text x="${ml+step*i+step/2}" y="${H-mb+18}" text-anchor="middle" class="ax">${edges[i]}</text>`; }
-    s+=`<text x="${ml+pw/2}" y="${H-6}" text-anchor="middle" class="axttl">veková kategória (pri voľbách)</text>`;
+    s+=`<text x="${ml+pw/2}" y="${H-6}" text-anchor="middle" class="axttl">veková kategória (roky)</text>`;
     s+=`<text x="${ml+step*0.9}" y="${mt+34}" class="era" fill="${ACCENT}">${A.label}</text>`;
     s+=`<text x="${ml+step*(n-2.4)}" y="${mt+40}" class="era" fill="#9aa0ab">${B.label}</text>`;
     return s+"</svg>";
   }
   const selA=document.getElementById("selA"), selB=document.getElementById("selB"),
+        outA=document.getElementById("outA"), outB=document.getElementById("outB"),
         cmp=document.getElementById("cmp"), swap=document.getElementById("swap");
   const tip=document.createElement("div"); tip.className="tip"; tip.style.display="none";
   document.body.appendChild(tip);
-  DATA.forEach((t,i)=>{ [selA,selB].forEach(sel=>{ const o=document.createElement("option");
-    o.value=i; o.textContent=t.label; sel.appendChild(o); }); });
-  selA.value=0; selB.value=DATA.length-1;
-  function draw(){ cmp.innerHTML=svgEl(DATA[+selA.value], DATA[+selB.value]); }
-  selA.addEventListener("change",draw); selB.addEventListener("change",draw);
+  [selA,selB].forEach(sl=>{ sl.min=MINY; sl.max=MAXY; sl.step=1; });
+  selA.value=MINY; selB.value=MAXY;
+  function draw(){ const ya=+selA.value, yb=+selB.value;
+    outA.textContent=ya; outB.textContent=yb;
+    cmp.innerHTML=svgEl(entryForYear(ya), entryForYear(yb)); }
+  selA.addEventListener("input",draw); selB.addEventListener("input",draw);
   swap.addEventListener("click",()=>{ const a=selA.value; selA.value=selB.value; selB.value=a; draw(); });
   function showTip(html,e){ tip.innerHTML=html; tip.style.display="block";
     tip.style.left=Math.max(8, Math.min(e.clientX+14, innerWidth-tip.offsetWidth-8))+"px";
@@ -318,10 +322,13 @@ def main() -> None:
   .pct {{ fill:#fff; font-size:11px; font-weight:600; }}
   .ctitle {{ fill:var(--ink); font-size:20px; font-weight:700; }}
   .era {{ font-size:26px; font-weight:700; letter-spacing:-.01em; }}
-  .picker {{ display:flex; gap:16px; align-items:center; margin:0 0 8px; flex-wrap:wrap; }}
-  .picker label {{ font-size:14px; color:var(--muted); display:flex; align-items:center; gap:6px; }}
-  .picker select {{ font:inherit; font-size:15px; padding:6px 10px; border:1px solid #cdd2dc;
-                    border-radius:8px; background:#fff; color:var(--ink); font-weight:600; }}
+  .picker {{ display:flex; gap:20px; align-items:center; margin:0 0 10px; flex-wrap:wrap; }}
+  .picker .yr {{ display:flex; align-items:center; gap:8px; font-size:14px; color:var(--muted);
+                flex:1 1 260px; min-width:240px; }}
+  .picker .yr .tag {{ font-weight:700; font-size:15px; }}
+  .picker .yr input[type=range] {{ flex:1; accent-color:var(--accent); cursor:pointer; }}
+  .picker .yr output {{ font-weight:700; font-size:16px; color:var(--ink); min-width:3ch;
+                       font-variant-numeric:tabular-nums; text-align:right; }}
   .picker #swap {{ font-size:16px; padding:6px 12px; border:1px solid #cdd2dc; border-radius:8px;
                   background:#fff; cursor:pointer; color:var(--ink); }}
   .picker #swap:hover {{ background:#eef1f7; }}
@@ -365,12 +372,14 @@ def main() -> None:
 
 <section>
   <h2>Porovnanie</h2>
-  <p class="desc">Vyber si dva roky a porovnaj vekové zloženie poslancov v päťročných kategóriách
-     (podiel poslancov daného obdobia). Predvolene 1994 vs 2023. Možnosť <b>dnes</b> ukáže
-     aktuálne sediacich poslancov s vekom prepočítaným k dnešnému dňu.</p>
+  <p class="desc">Posuň jazdce a porovnaj ľubovoľné dva roky, od {TERMS[0]['label']} po dnešok.
+     Pre každý rok sa vezme parlament, ktorý v tom roku úradoval, a vek poslancov sa
+     prepočíta k danému roku (aktuálny rok k dnešnému dňu). Podiel = z poslancov daného obdobia.</p>
   <div class="picker">
-    <label>A: <select id="selA"></select></label>
-    <label>B: <select id="selB"></select></label>
+    <label class="yr"><span class="tag" style="color:{ACCENT}">A</span>
+      <input type="range" id="selA"><output id="outA"></output></label>
+    <label class="yr"><span class="tag" style="color:#9aa0ab">B</span>
+      <input type="range" id="selB"><output id="outB"></output></label>
     <button id="swap" type="button" title="Vymeniť">⇄</button>
   </div>
   <div id="cmp"></div>
