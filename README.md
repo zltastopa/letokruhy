@@ -48,6 +48,20 @@ Pre každé obdobie `t` (1 až 9):
   Jurinová, Borguľa). Opravené podľa Wikipédie a TASR (viď `BIRTH_OVERRIDE`
   v `scripts/build.py`).
 
+## Obmedzenia
+
+- **Aktuálne obdobie:** zoznam pre prebiehajúce obdobie ukazuje len sediacich
+  poslancov. Tých, čo mandát opustili počas obdobia, dopĺňa `data/extra_ids.json`.
+  Kým sa obdobie neskončí, nových odídencov treba do tohto súboru doplniť ručne
+  (po voľbách sa zoznam obdobia stane kumulatívnym a súbor je už zbytočný).
+- **Reprodukovateľnosť:** surové HTML (`cache/`) je gitignored a dá sa kedykoľvek
+  znova stiahnuť cez `scrape.py`. Auditovateľným zdrojom pravdy je commitnutý
+  `data/mps.csv` (dátum narodenia a strana pre každého poslanca). Keďže nrsr.sk
+  sa môže meniť, presná historická reprodukcia závisí od aktuálneho stavu zdroja.
+- **Kvalita zdroja:** `build.py` sa preruší, ak niektoré obdobie vráti menej ako
+  140 poslancov alebo ak chýba viac než 5 dátumov narodenia, aby sa nepublikoval
+  neúplný dataset.
+
 ## Ako je to zostavené
 
 ```

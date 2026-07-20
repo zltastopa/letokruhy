@@ -254,8 +254,8 @@ def main() -> None:
   selA.addEventListener("change",draw); selB.addEventListener("change",draw);
   swap.addEventListener("click",()=>{ const a=selA.value; selA.value=selB.value; selB.value=a; draw(); });
   function showTip(html,e){ tip.innerHTML=html; tip.style.display="block";
-    tip.style.left=Math.min(e.clientX+14, innerWidth-tip.offsetWidth-8)+"px";
-    tip.style.top=(e.clientY+14)+"px"; }
+    tip.style.left=Math.max(8, Math.min(e.clientX+14, innerWidth-tip.offsetWidth-8))+"px";
+    tip.style.top=Math.max(8, Math.min(e.clientY+14, innerHeight-tip.offsetHeight-8))+"px"; }
   function hideTip(){ tip.style.display="none"; }
   cmp.addEventListener("mousemove",e=>{ const b=e.target.closest(".hit"); if(!b){ hideTip(); return; }
     const d=b.dataset;

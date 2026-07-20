@@ -31,9 +31,8 @@ BASE = "https://www.nrsr.sk/web/Default.aspx"
 UA = {"User-Agent": "Mozilla/5.0 (NRSR age-distribution research; polite scraper)"}
 TERMS = list(range(1, 10))  # 1994 (term 1) .. 2023 (term 9)
 
+# TLS verification stays ON; nrsr.sk presents a valid certificate chain.
 _CTX = ssl.create_default_context()
-_CTX.check_hostname = False
-_CTX.verify_mode = ssl.CERT_NONE
 
 MP_LINK = re.compile(r"PoslanecID=(\d+)&(?:amp;)?CisObdobia=(\d+)")
 
@@ -59,10 +58,14 @@ def mp_url(mp_id: int, term: int) -> str:
     return f"{BASE}?sid=poslanci/poslanec&PoslanecID={mp_id}&CisObdobia={term}"
 
 
-def get_cached(path: Path, url: str) -> str:
+def get_cached(path: Path, url: str, marker: str) -> str:
     if path.exists() and path.stat().st_size > 0:
         return path.read_text(encoding="utf-8")
     html = fetch(url)
+    # Guard against maintenance/error/login pages returned with HTTP 200:
+    # only cache if the expected NRSR content marker is present.
+    if marker not in html:
+        raise RuntimeError(f"unexpected page content (missing {marker!r}) at {url}")
     path.write_text(html, encoding="utf-8")
     time.sleep(0.25)  # be polite on cache-miss
     return html
@@ -72,7 +75,7 @@ def scrape_rosters() -> dict[int, set[int]]:
     """term -> set of PoslanecID that served that term."""
     rosters: dict[int, set[int]] = {}
     for term in TERMS:
-        html = get_cached(ROSTER_DIR / f"term-{term}.html", roster_url(term))
+        html = get_cached(ROSTER_DIR / f"term-{term}.html", roster_url(term), "Abecedný zoznam poslancov")
         ids = {int(a) for a, b in MP_LINK.findall(html) if int(b) == term}
         rosters[term] = ids
         print(f"roster term {term}: {len(ids)} MPs", flush=True)
@@ -89,7 +92,7 @@ def scrape_mp_pages(rosters: dict[int, set[int]]) -> None:
 
     def work(pair):
         mid, t = pair
-        get_cached(MP_DIR / f"{mid}-{t}.html", mp_url(mid, t))
+        get_cached(MP_DIR / f"{mid}-{t}.html", mp_url(mid, t), "Kandidoval(a) za")
         return pair
 
     with ThreadPoolExecutor(max_workers=6) as ex:

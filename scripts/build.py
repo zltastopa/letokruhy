@@ -137,6 +137,22 @@ def main() -> None:
             if not born:
                 missing_birth.append((term, mid, name))
 
+    # --- sanity gates: fail loudly rather than publish a partial dataset ---
+    by_term: dict[int, int] = {}
+    for r in rows:
+        by_term[r["term"]] = by_term.get(r["term"], 0) + 1
+    problems = []
+    if not rows:
+        problems.append("no MP rows parsed at all")
+    for term in ELECTION:
+        got = by_term.get(term, 0)
+        if got < 140:  # every real term has ~150+ (incl. replacements)
+            problems.append(f"term {term}: only {got} MPs parsed (expected >= 140)")
+    if len(missing_birth) > 5:  # only 3 known source errors exist
+        problems.append(f"{len(missing_birth)} MPs missing birth date (expected <= 5)")
+    if problems:
+        raise SystemExit("build aborted, source data looks incomplete:\n  " + "\n  ".join(problems))
+
     # per-MP CSV
     with (OUT / "mps.csv").open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
